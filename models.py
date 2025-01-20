@@ -1,44 +1,54 @@
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.orm import validates  # Importing validates
 
 db = SQLAlchemy()
 
 class User(db.Model):
-    __tablename__ = 'users'
-    
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    username = db.Column(db.String(128), nullable=False, unique=True)
+    email = db.Column(db.String(128), nullable=False, unique=True)
+    password = db.Column(db.String(128), nullable=False)
 
-    posts = db.relationship('Post', backref='author', lazy=True)
-
+    # Hash the password before storing it
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password = generate_password_hash(password)
 
+    # Check the hashed password
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        return check_password_hash(self.password, password)
 
-    def __repr__(self):
-        return f'<User {self.username}>'
+    # Relationship to Product model
+    products = db.relationship('Product', backref='user', lazy=True)
 
 class Post(db.Model):
-    __tablename__ = 'posts'
-    
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    name = db.Column(db.String(128), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
 
-    def __repr__(self):
-        return f'<Post {self.title}>'
+    # Foreign key to User model
+    @validates('name')
+    def validate_name(self, key, name):
+        if not name:
+            raise ValueError("Name cannot be empty.")
+        return name
 
-class TokenBlacklist(db.Model):
-    __tablename__ = 'token_blacklist'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    jti = db.Column(db.String(36), unique=True, nullable=False)  # Unique identifier for the token
-    created_at = db.Column(db.DateTime, nullable=False)  # Timestamp of when the token was blacklisted
+    @validates('price')
+    def validate_price(self, key, price):
+        if price <= 0:
+            raise ValueError("Price must be a positive value.")
+        return price
 
-    def __repr__(self):
-        return f'<TokenBlacklist {self.jti}>'
+    @validates('quantity')
+    def validate_quantity(self, key, quantity):
+        if quantity < 0:
+            raise ValueError("Quantity cannot be negative.")
+        return quantity
+
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+
+# class TokenBlocklist(db.Model):
+#     id = db.Column(db.Integer, primary_key=True)
+#     jti = db.Column(db.String(36), nullable=False, index=True)
+#     created_at = db.Column(db.DateTime, nullable=False)
