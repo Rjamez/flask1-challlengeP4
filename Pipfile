@@ -11,6 +11,7 @@ flask-wtf = "*"
 flask-login = "*"
 flask-jwt-extended = "*"
 flask-migrate = "*"
+flask-mail = "*"
 
 [dev-packages]
 
